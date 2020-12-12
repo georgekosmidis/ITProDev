@@ -1,0 +1,45 @@
+trigger:
+- release/*
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
+    arguments: '--configuration Release'
+
+- task: VSTest@2
+  inputs:
+    testSelector: 'testAssemblies'
+    testAssemblyVer2: |
+      **\*test*.dll
+      !**\*TestAdapter.dll
+      !**\obj\**
+    searchFolder: '$(System.DefaultWorkingDirectory)'
+
+- task: DotNetCoreCLI@2
+  displayName: Pack
+  inputs:
+    command: 'pack'
+    packagesToPack: 'ITProDev/*.csproj'
+    configuration: 'Release'
+    versioningScheme: 'off'
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Pipeline.Workspace)'
+    artifact: ‘ITProDev.Nuget'
+    publishLocation: 'pipeline'
+
+
+- task: NuGetCommand@2
+  displayName: 'NuGet Push'
+  inputs:
+    command: push
+    packagesToPush: '$(System.ArtifactsDirectory)/**/*.nupkg'
+    nuGetFeedType: external
+    publishFeedCredentials: 'ITProDev.ServiceConnection'
+
